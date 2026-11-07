@@ -166,7 +166,7 @@ impl eframe::App for App {
                         self.show_hotkey_dialog = true;
                         ui.close_menu();
                     }
-                    if ui.button("About PS2 Native Recomp...").clicked() {
+                    if ui.button("About DivinePort...").clicked() {
                         self.show_about_dialog = true;
                         ui.close_menu();
                     }
@@ -399,14 +399,25 @@ impl eframe::App for App {
                 .show(ctx, |ui| {
                     if let Some(ref logo) = self.logo_texture {
                         ui.vertical_centered(|ui| {
-                            ui.image((logo.id(), Vec2::new(160.0, 160.0)));
+                            ui.image((logo.id(), Vec2::new(180.0, 180.0)));
                         });
                         ui.add_space(8.0);
                     }
-                    ui.label(RichText::new("DivinePort - PS2 Static Recompiler Launcher").strong().size(15.0));
+                    ui.label(RichText::new("DivinePort - Native PS2 Static Recompiler Launcher").strong().size(15.0));
+                    ui.label(RichText::new("Versi 1.0.0 (Release)").color(Color32::from_rgb(56, 189, 248)));
                     ui.add_space(6.0);
                     ui.label("Kompilasi statis Ahead-Of-Time (AOT) dari instruksi biner PS2 MIPS R5900 langsung ke kode C++20 dan mesin x86_64 Windows.");
                     ui.label("Menggabungkan arsitektur grafis SpartanPort (AMD FSR 3.1 / 4.1, DLSS, TAA, Frame Generation) dengan sistem kontrol dan pustaka game terstruktur PCSX2.");
+                    ui.add_space(8.0);
+                    ui.separator();
+                    ui.add_space(6.0);
+                    ui.label(RichText::new("Dukungan & Kontribusi:").strong());
+                    ui.label("Jika Anda menyukai proyek ini dan ingin memberikan dukungan:");
+                    if ui.button(RichText::new("Kunjungi Website Support (supportzhou.vercel.app)").color(Color32::from_rgb(59, 130, 246)).strong()).clicked() {
+                        let _ = std::process::Command::new("cmd")
+                            .args(["/c", "start", "https://supportzhou.vercel.app"])
+                            .spawn();
+                    }
                     ui.add_space(10.0);
                     if ui.button("Tutup").clicked() {
                         close_dialog = true;

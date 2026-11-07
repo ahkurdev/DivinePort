@@ -111,4 +111,14 @@ DivinePort is dual-licensed under:
 
 SPDX-License-Identifier: `MIT OR GPL-3.0-or-later`
 
+---
+
+## Support & Donation
+
+Jika Anda menyukai proyek DivinePort dan ingin memberikan dukungan untuk kelanjutan pengembangannya, kunjungi:
+
+- **Official Support Website**: [https://supportzhou.vercel.app](https://supportzhou.vercel.app)
+
+---
+
 Developed with passion by **ahkurdev**.
