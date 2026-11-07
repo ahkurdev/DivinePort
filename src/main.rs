@@ -23,13 +23,14 @@ struct App {
     show_about_dialog: bool,
     show_hotkey_dialog: bool,
     logo_texture: Option<egui::TextureHandle>,
+    selected_game_index: usize,
 }
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let settings_path = Path::new("settings.json");
         let settings = LauncherSettings::load_or_default(settings_path);
-        let runtime_config = GameRuntimeConfig::default();
+        let runtime_config = GameRuntimeConfig::load_or_default(Path::new("runtime_config.json"));
         let gamepad = GamepadManager::new();
 
         let recomp_root = if Path::new("../ps2-native-recomp").exists() {
@@ -63,14 +64,105 @@ impl App {
             show_about_dialog: false,
             show_hotkey_dialog: false,
             logo_texture,
+            selected_game_index: 0,
         }
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let prev_settings = self.settings.clone();
+        let prev_runtime = self.runtime_config.clone();
+
         self.gamepad.update();
         self.native_mgr.update_build_logs();
+
+        // -------------------------------------------------------------
+        // GAMEPAD MENU NAVIGATION (D-Pad, Stick, Face Buttons)
+        // -------------------------------------------------------------
+        let total_games = self.native_mgr.games.len();
+        if total_games > 0 {
+            if self.selected_game_index >= total_games {
+                self.selected_game_index = total_games - 1;
+            }
+
+            if self.gamepad.is_button_just_pressed(gilrs::Button::DPadUp) || self.gamepad.check_stick_nav_up() {
+                if self.selected_game_index > 0 {
+                    self.selected_game_index -= 1;
+                }
+            }
+            if self.gamepad.is_button_just_pressed(gilrs::Button::DPadDown) || self.gamepad.check_stick_nav_down() {
+                if self.selected_game_index + 1 < total_games {
+                    self.selected_game_index += 1;
+                }
+            }
+        }
+
+        // Tab Switching via L1 / R1 or Stick Left / Right
+        if self.gamepad.is_button_just_pressed(gilrs::Button::LeftTrigger)
+            || self.gamepad.is_button_just_pressed(gilrs::Button::LeftTrigger2)
+            || self.gamepad.check_stick_nav_left()
+        {
+            self.active_tab = match self.active_tab {
+                ActiveTab::Library => ActiveTab::Logs,
+                ActiveTab::Graphics => ActiveTab::Library,
+                ActiveTab::Controls => ActiveTab::Graphics,
+                ActiveTab::Settings => ActiveTab::Controls,
+                ActiveTab::Logs => ActiveTab::Settings,
+            };
+        }
+        if self.gamepad.is_button_just_pressed(gilrs::Button::RightTrigger)
+            || self.gamepad.is_button_just_pressed(gilrs::Button::RightTrigger2)
+            || self.gamepad.check_stick_nav_right()
+        {
+            self.active_tab = match self.active_tab {
+                ActiveTab::Library => ActiveTab::Graphics,
+                ActiveTab::Graphics => ActiveTab::Controls,
+                ActiveTab::Controls => ActiveTab::Settings,
+                ActiveTab::Settings => ActiveTab::Logs,
+                ActiveTab::Logs => ActiveTab::Library,
+            };
+        }
+
+        // Toggle Table / Card view with West button (X on Xbox, Square on PS)
+        if self.gamepad.is_button_just_pressed(gilrs::Button::West) {
+            self.table_view_mode = !self.table_view_mode;
+        }
+
+        // Launch / Recompile selected game with South button (A on Xbox, Cross on PS) or Start
+        let to_action = if self.active_tab == ActiveTab::Library && !self.show_about_dialog && !self.show_hotkey_dialog {
+            if self.gamepad.is_button_just_pressed(gilrs::Button::South)
+                || self.gamepad.is_button_just_pressed(gilrs::Button::Start)
+            {
+                self.native_mgr.games.get(self.selected_game_index).cloned()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        if let Some(game) = to_action {
+            if game.is_ready {
+                let _ = self.native_mgr.launch_native_game(
+                    &game,
+                    self.settings.glyph_style.as_str(),
+                    &self.runtime_config,
+                );
+            } else {
+                let iso_path = PathBuf::from(&game.source);
+                self.native_mgr.start_native_build(
+                    &game.name,
+                    &iso_path,
+                    self.runtime_config.widescreen_16_9,
+                );
+            }
+        }
+
+        // Toggle Hotkeys help dialog with Select / Back button
+        if self.gamepad.is_button_just_pressed(gilrs::Button::Select) {
+            self.show_hotkey_dialog = !self.show_hotkey_dialog;
+        }
 
         // SpartanPort Dark Slate Theme
         let mut visuals = egui::Visuals::dark();
@@ -335,6 +427,7 @@ impl eframe::App for App {
                         &mut self.native_mgr,
                         &self.search_query,
                         self.table_view_mode,
+                        &mut self.selected_game_index,
                     );
                 }
                 ActiveTab::Controls => {
@@ -426,6 +519,15 @@ impl eframe::App for App {
             if !open || close_dialog {
                 self.show_about_dialog = false;
             }
+        }
+
+        // -------------------------------------------------------------
+        // INSTANT AUTO-SAVE: If any setting changed, save immediately to disk
+        // -------------------------------------------------------------
+        if self.settings != prev_settings || self.runtime_config != prev_runtime {
+            let _ = self.settings.save(Path::new("settings.json"));
+            let _ = self.runtime_config.save_json(Path::new("runtime_config.json"));
+            let _ = self.runtime_config.save_to_ini(Path::new("spartanport.ini"));
         }
 
         ctx.request_repaint();

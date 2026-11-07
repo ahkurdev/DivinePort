@@ -9,6 +9,7 @@ pub fn render_library_tab(
     native_mgr: &mut NativeManager,
     search_query: &str,
     table_view_mode: bool,
+    selected_index: &mut usize,
 ) {
     ui.add_space(2.0);
 
@@ -106,10 +107,18 @@ pub fn render_library_tab(
                             ui.label(RichText::new("Aksi").strong().color(Color32::from_rgb(148, 163, 184)));
                             ui.end_row();
 
-                            for game in &filtered_games {
+                            for (idx, game) in filtered_games.iter().enumerate() {
+                                let is_selected = *selected_index == idx;
                                 // 1. Title
                                 let display_title = game.name.replace('-', " ").to_uppercase();
-                                ui.label(RichText::new(display_title).strong().color(Color32::WHITE));
+                                let title_text = if is_selected {
+                                    RichText::new(format!("> {}", display_title)).strong().color(Color32::from_rgb(56, 189, 248))
+                                } else {
+                                    RichText::new(display_title).strong().color(Color32::WHITE)
+                                };
+                                if ui.selectable_label(is_selected, title_text).clicked() {
+                                    *selected_index = idx;
+                                }
 
                                 // 2. Serial / ELF ID
                                 let serial_display = if game.elf.contains("SLUS_209.64") {
@@ -195,10 +204,22 @@ pub fn render_library_tab(
         // SPARTANPORT CARD GRID VIEW
         // -------------------------------------------------------------
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for game in &filtered_games {
+            for (idx, game) in filtered_games.iter().enumerate() {
+                let is_selected = *selected_index == idx;
+                let bg_color = if is_selected {
+                    Color32::from_rgb(26, 36, 56)
+                } else {
+                    Color32::from_rgb(18, 24, 38)
+                };
+                let stroke_color = if is_selected {
+                    Color32::from_rgb(56, 189, 248)
+                } else {
+                    Color32::from_rgb(48, 54, 61)
+                };
+
                 egui::Frame::none()
-                    .fill(Color32::from_rgb(18, 24, 38))
-                    .stroke(Stroke::new(1.0_f32, Color32::from_rgb(48, 54, 61)))
+                    .fill(bg_color)
+                    .stroke(Stroke::new(if is_selected { 2.0_f32 } else { 1.0_f32 }, stroke_color))
                     .inner_margin(12.0)
                     .rounding(6.0)
                     .show(ui, |ui| {

@@ -40,7 +40,7 @@ impl GlyphStyle {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LauncherSettings {
     pub gui_scale: String,           // "auto", "1.0", "1.5"
     pub language: String,            // "id", "en", "zh"
@@ -215,7 +215,7 @@ impl FrameGenMode {
 }
 
 /// Settings specifically written to `recomp.ini` & `spartanport.ini`
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GameRuntimeConfig {
     pub glyph_style: GlyphStyle,
     pub render_scale: u32,       // 1x, 2x
@@ -251,6 +251,23 @@ impl Default for GameRuntimeConfig {
 }
 
 impl GameRuntimeConfig {
+    pub fn load_or_default(path: &Path) -> Self {
+        if path.exists() {
+            if let Ok(content) = fs::read_to_string(path) {
+                if let Ok(cfg) = serde_json::from_str::<GameRuntimeConfig>(&content) {
+                    return cfg;
+                }
+            }
+        }
+        Self::default()
+    }
+
+    pub fn save_json(&self, path: &Path) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        fs::write(path, json)
+    }
+
     pub fn calculate_render_resolution(&self) -> (u32, u32, u32, u32) {
         let (tw, th) = match self.target_resolution.as_str() {
             "720p" => (1280, 720),

@@ -99,9 +99,43 @@ impl NativeManager {
                             if ext_lower == "iso" || ext_lower == "bin" || ext_lower == "chd" {
                                 let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                                 let safe_name = Self::sanitize_game_name(&file_name);
+                                let norm_file_lower = file_name.to_lowercase();
 
-                                // Check if already listed
-                                if !self.games.iter().any(|g| g.name == safe_name) {
+                                // Check if already listed by safe_name, source filename, or iso path
+                                let already_exists = self.games.iter().any(|g| {
+                                    if g.name == safe_name {
+                                        return true;
+                                    }
+                                    let g_source_name = Path::new(&g.source)
+                                        .file_name()
+                                        .map(|s| s.to_string_lossy().to_lowercase())
+                                        .unwrap_or_default();
+                                    if !g_source_name.is_empty() && g_source_name == norm_file_lower {
+                                        return true;
+                                    }
+                                    let g_iso_name = Path::new(&g.iso)
+                                        .file_name()
+                                        .map(|s| s.to_string_lossy().to_lowercase())
+                                        .unwrap_or_default();
+                                    if !g_iso_name.is_empty() && g_iso_name == norm_file_lower {
+                                        return true;
+                                    }
+                                    // Match base prefix (e.g. devil-may-cry-3 and devil-may-cry-3-dantes-awakening)
+                                    let norm_g = g.name.replace('-', "");
+                                    let norm_s = safe_name.replace('-', "");
+                                    if norm_g.starts_with(&norm_s) || norm_s.starts_with(&norm_g) {
+                                        return true;
+                                    }
+                                    false
+                                });
+
+                                if !already_exists {
+                                    let abs_path = if path.is_absolute() {
+                                        path.clone()
+                                    } else {
+                                        std::env::current_dir().unwrap_or_default().join(&path)
+                                    };
+
                                     let exe = self
                                         .recomp_root
                                         .join("build")
@@ -113,11 +147,11 @@ impl NativeManager {
 
                                     self.games.push(NativeGameInfo {
                                         name: safe_name.clone(),
-                                        source: path.to_string_lossy().to_string(),
+                                        source: abs_path.to_string_lossy().to_string(),
                                         built: String::new(),
                                         took: String::new(),
                                         elf: format!("games/{}/disc", safe_name),
-                                        iso: path.to_string_lossy().to_string(),
+                                        iso: abs_path.to_string_lossy().to_string(),
                                         pnach: String::new(),
                                         sections: vec![],
                                         patches: String::new(),
@@ -361,7 +395,37 @@ impl NativeManager {
                 std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string()) + "\\System32",
             );
 
-            let posix_iso = iso_buf.to_string_lossy().replace('\\', "/");
+            let game_dir = root.join("games").join(&safe_name);
+            let disc_iso = game_dir.join("disc.iso");
+            let _ = fs::create_dir_all(&game_dir);
+
+            // Resolve absolute path to the ISO file
+            let abs_iso = if iso_buf.is_absolute() {
+                iso_buf.clone()
+            } else {
+                let cur = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+                let cand1 = cur.join(&iso_buf);
+                if cand1.exists() {
+                    cand1
+                } else {
+                    let cand2 = root.join(&iso_buf);
+                    if cand2.exists() {
+                        cand2
+                    } else {
+                        cand1
+                    }
+                }
+            };
+
+            // Link or copy disc.iso into games/<safe_name>/disc.iso so port.sh & pnach.py never fail on relative paths or special chars
+            if !disc_iso.exists() && abs_iso.exists() {
+                let _ = tx.send(format!("[Setup] Menautkan berkas disc.iso untuk '{}'...", safe_name));
+                if fs::hard_link(&abs_iso, &disc_iso).is_err() {
+                    let _ = fs::copy(&abs_iso, &disc_iso);
+                }
+            }
+
+            let disc_posix = format!("games/{}/disc.iso", safe_name);
 
             // Auto-fetch PNACH patch if widescreen is enabled
             if widescreen {
@@ -372,7 +436,7 @@ impl NativeManager {
                 pnach_cmd.args([
                     "scripts/pnach.py",
                     "fetch",
-                    &posix_iso,
+                    &disc_posix,
                     "--out",
                     &format!("games/{}", safe_name),
                 ]);
@@ -380,7 +444,6 @@ impl NativeManager {
             }
 
             // Look for fetched pnach file in game dir
-            let game_dir = root.join("games").join(&safe_name);
             let mut pnach_args = Vec::new();
             if let Ok(entries) = fs::read_dir(&game_dir) {
                 for entry in entries.flatten() {
@@ -403,7 +466,7 @@ impl NativeManager {
             port_cmd.env("Path", &portable_path);
             port_cmd.arg("scripts/port.sh");
             port_cmd.arg(&safe_name);
-            port_cmd.arg(&posix_iso);
+            port_cmd.arg(&disc_posix);
             port_cmd.arg("--native-only");
             if widescreen {
                 port_cmd.arg("--widescreen");
@@ -562,6 +625,31 @@ impl NativeManager {
 
         let mut cmd = Command::new(exe);
         cmd.current_dir(&self.recomp_root);
+
+        // Ensure gamecontrollerdb.txt exists next to ps2run.exe for generic HID / DirectInput controllers
+        if let Some(exe_dir) = exe.parent() {
+            let target_db = exe_dir.join("gamecontrollerdb.txt");
+            if !target_db.exists() {
+                let db_candidates = [
+                    PathBuf::from("gamecontrollerdb.txt"),
+                    PathBuf::from("assets/gamecontrollerdb.txt"),
+                    self.recomp_root.join("gamecontrollerdb.txt"),
+                ];
+                for cand in &db_candidates {
+                    if cand.exists() {
+                        let _ = fs::copy(cand, &target_db);
+                        break;
+                    }
+                }
+            }
+        }
+
+        let db_abs = std::env::current_dir()
+            .unwrap_or_default()
+            .join("gamecontrollerdb.txt");
+        if db_abs.exists() {
+            cmd.env("SDL_GAMECONTROLLERCONFIG_FILE", &db_abs);
+        }
 
         let elf_path = self.recomp_root.join(&game.elf);
         let iso_path = self.recomp_root.join(&game.iso);

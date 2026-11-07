@@ -1,11 +1,10 @@
 use crate::config::{GameRuntimeConfig, LauncherSettings};
 use eframe::egui::{self, Color32, RichText, Stroke};
-use std::path::Path;
 
 pub fn render_settings_tab(
     ui: &mut egui::Ui,
     settings: &mut LauncherSettings,
-    runtime_config: &mut GameRuntimeConfig,
+    _runtime_config: &mut GameRuntimeConfig,
 ) {
     ui.heading(RichText::new("PENGATURAN UMUM & KONFIGURASI SISTEM").strong().size(18.0));
     ui.label(RichText::new("Konfigurasi aplikasi peluncur, path folder kompiler, dan preferensi antarmuka.").color(Color32::from_rgb(139, 148, 158)));
@@ -72,10 +71,8 @@ pub fn render_settings_tab(
 
     ui.add_space(12.0);
 
-    if ui.button(RichText::new("[ Simpan Pengaturan (Save settings.json & spartanport.ini) ]").strong().size(14.0)).clicked() {
-        let settings_path = Path::new("settings.json");
-        let ini_path = Path::new("spartanport.ini");
-        let _ = settings.save(settings_path);
-        let _ = runtime_config.save_to_ini(ini_path);
-    }
+    ui.colored_label(
+        Color32::from_rgb(52, 211, 153),
+        RichText::new("[ Auto-Save Aktif: Setiap perubahan opsi disimpan otomatis ke disk ]").strong(),
+    );
 }
