@@ -1,0 +1,8 @@
+/target
+*.exe
+settings.json
+games/
+*.iso
+*.bin
+*.chd
+*.log
