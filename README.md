@@ -1,5 +1,15 @@
 # DivinePort
 
+<p align="center">
+  <img src="assets/logo.jpg" alt="DivinePort Logo" width="480">
+</p>
+
+<p align="center">
+  <strong>Native PS2 to PC Porting Tool & Launcher | Powered by Rust</strong>
+</p>
+
+---
+
 **DivinePort** is a high-performance native frontend, launcher, and pipeline orchestrator for **PlayStation 2 Static Recompilation (AOT)**. Built entirely in **Rust** (`eframe`/`egui`), DivinePort fuses the technical desktop precision of **PCSX2** with the cutting-edge graphics and upscaling architecture of **SpartanPort (v2.2.0)**.
 
 Unlike traditional PS2 emulators that rely on runtime JIT interpretation, games processed through DivinePort are translated ahead-of-time (AOT) from raw MIPS R5900 machine code directly into clean C++20 and compiled into standalone, native Windows `x86_64` executables (`ps2run.exe`).

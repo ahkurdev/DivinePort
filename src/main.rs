@@ -22,10 +22,11 @@ struct App {
     table_view_mode: bool, // true: PCSX2 detailed list table, false: SpartanPort cards
     show_about_dialog: bool,
     show_hotkey_dialog: bool,
+    logo_texture: Option<egui::TextureHandle>,
 }
 
 impl App {
-    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let settings_path = Path::new("settings.json");
         let settings = LauncherSettings::load_or_default(settings_path);
         let runtime_config = GameRuntimeConfig::default();
@@ -41,6 +42,16 @@ impl App {
 
         let native_mgr = NativeManager::new(recomp_root);
 
+        let logo_texture = if let Ok(img) = image::load_from_memory(include_bytes!("../assets/logo.jpg")) {
+            let rgba = img.to_rgba8();
+            let size = [rgba.width() as usize, rgba.height() as usize];
+            let pixels = rgba.as_flat_samples();
+            let color_image = egui::ColorImage::from_rgba_unmultiplied(size, pixels.as_slice());
+            Some(cc.egui_ctx.load_texture("divineport_logo", color_image, Default::default()))
+        } else {
+            None
+        };
+
         Self {
             settings,
             runtime_config,
@@ -51,6 +62,7 @@ impl App {
             table_view_mode: true,
             show_about_dialog: false,
             show_hotkey_dialog: false,
+            logo_texture,
         }
     }
 }
@@ -179,7 +191,12 @@ impl eframe::App for App {
         egui::TopBottomPanel::top("pcsx2_toolbar").show(ctx, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
-                // Brand label
+                // Brand logo + label
+                if let Some(ref logo) = self.logo_texture {
+                    ui.image((logo.id(), Vec2::new(26.0, 26.0)));
+                    ui.add_space(2.0);
+                }
+
                 ui.label(
                     RichText::new("DIVINEPORT")
                         .strong()
@@ -380,6 +397,12 @@ impl eframe::App for App {
                 .resizable(false)
                 .open(&mut open)
                 .show(ctx, |ui| {
+                    if let Some(ref logo) = self.logo_texture {
+                        ui.vertical_centered(|ui| {
+                            ui.image((logo.id(), Vec2::new(160.0, 160.0)));
+                        });
+                        ui.add_space(8.0);
+                    }
                     ui.label(RichText::new("DivinePort - PS2 Static Recompiler Launcher").strong().size(15.0));
                     ui.add_space(6.0);
                     ui.label("Kompilasi statis Ahead-Of-Time (AOT) dari instruksi biner PS2 MIPS R5900 langsung ke kode C++20 dan mesin x86_64 Windows.");
@@ -447,12 +470,30 @@ fn render_logs_tab(ui: &mut egui::Ui, native_mgr: &mut NativeManager) {
         });
 }
 
+fn load_icon() -> Option<egui::IconData> {
+    let bytes = include_bytes!("../assets/logo.jpg");
+    let img = image::load_from_memory(bytes).ok()?;
+    let rgba = img.to_rgba8();
+    let (width, height) = rgba.dimensions();
+    Some(egui::IconData {
+        rgba: rgba.into_raw(),
+        width,
+        height,
+    })
+}
+
 fn main() -> eframe::Result<()> {
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_inner_size(Vec2::new(1040.0, 720.0))
+        .with_min_inner_size(Vec2::new(880.0, 580.0))
+        .with_title("DivinePort - Native PS2 Static Recompiler Launcher");
+
+    if let Some(icon) = load_icon() {
+        viewport = viewport.with_icon(icon);
+    }
+
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size(Vec2::new(1040.0, 720.0))
-            .with_min_inner_size(Vec2::new(880.0, 580.0))
-            .with_title("DivinePort - Native PS2 Static Recompiler Launcher"),
+        viewport,
         ..Default::default()
     };
     eframe::run_native(
