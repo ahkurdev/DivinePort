@@ -241,7 +241,7 @@ impl Default for GameRuntimeConfig {
             render_scale: 1,
             widescreen_16_9: true,
             fullscreen: false,
-            upscaler: UpscalerType::Fsr3,
+            upscaler: UpscalerType::Off,
             upscale_preset: UpscalePreset::Quality,
             frame_generation: FrameGenMode::Off,
             target_resolution: "1080p".to_string(),
@@ -251,7 +251,7 @@ impl Default for GameRuntimeConfig {
             msaa_mode: "auto".to_string(),
             graphics_backend: "vulkan".to_string(),
             async_audio: true,
-            lock_game_60_display_120: true,
+            lock_game_60_display_120: false,
         }
     }
 }

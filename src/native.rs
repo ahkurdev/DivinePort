@@ -784,11 +784,10 @@ impl NativeManager {
         cmd.env("PS2_GPU_BACKEND", &runtime_config.graphics_backend);
 
         // Audio Timing & Stretching Pipeline:
-        // When async_audio is disabled or default, enable audio stretching so the SoundPipe buffer
-        // stays smoothly buffered at 60-80ms without underruns (eliminates audio 0 ms and crackling sound).
+        // When async_audio is enabled, disable audio stretching (PS2_AUDIO_STRETCH=0)
+        // so the audio engine runs in real-time without locking the game into stretched x2.0 (30 FPS drop).
         if runtime_config.async_audio {
-            cmd.env("PS2_AUDIO_STRETCH", "1");
-            cmd.env("PS2_AUDIO_STRETCH_MAX", "2.0");
+            cmd.env("PS2_AUDIO_STRETCH", "0");
         } else {
             cmd.env("PS2_AUDIO_STRETCH", "1");
         }
