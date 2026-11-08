@@ -224,15 +224,32 @@ pub fn render_library_tab(
                     .rounding(6.0)
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
-                            let (badge_rect, _) = ui.allocate_exact_size(eframe::egui::Vec2::new(44.0, 44.0), egui::Sense::hover());
-                            ui.painter().rect_filled(badge_rect, 6.0, Color32::from_rgb(33, 38, 45));
-                            ui.painter().text(
-                                badge_rect.center(),
-                                egui::Align2::CENTER_CENTER,
-                                "PS2",
-                                egui::FontId::monospace(14.0),
-                                Color32::from_rgb(56, 189, 248),
-                            );
+                            let cover_path = format!("covers/{}.jpg", game.name);
+                            let mut loaded_cover = false;
+                            if std::path::Path::new(&cover_path).exists() {
+                                if let Ok(bytes) = std::fs::read(&cover_path) {
+                                    if let Ok(img) = image::load_from_memory(&bytes) {
+                                        let rgba = img.to_rgba8();
+                                        let size = [rgba.width() as usize, rgba.height() as usize];
+                                        let color_image = egui::ColorImage::from_rgba_unmultiplied(size, rgba.as_raw());
+                                        let texture = ui.ctx().load_texture(&cover_path, color_image, Default::default());
+                                        ui.image((texture.id(), egui::Vec2::new(54.0, 76.0)));
+                                        loaded_cover = true;
+                                    }
+                                }
+                            }
+
+                            if !loaded_cover {
+                                let (badge_rect, _) = ui.allocate_exact_size(eframe::egui::Vec2::new(54.0, 76.0), egui::Sense::hover());
+                                ui.painter().rect_filled(badge_rect, 6.0, Color32::from_rgb(33, 38, 45));
+                                ui.painter().text(
+                                    badge_rect.center(),
+                                    egui::Align2::CENTER_CENTER,
+                                    "PS2",
+                                    egui::FontId::monospace(14.0),
+                                    Color32::from_rgb(56, 189, 248),
+                                );
+                            }
 
                             ui.add_space(8.0);
                             ui.vertical(|ui| {

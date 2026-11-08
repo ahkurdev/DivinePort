@@ -254,6 +254,12 @@ impl eframe::App for App {
                 });
 
                 ui.menu_button("Help", |ui| {
+                    if ui.button("Check for Updates (GitHub)...").clicked() {
+                        let _ = std::process::Command::new("cmd")
+                            .args(["/c", "start", "https://github.com/ahkurdev/DivinePort/releases"])
+                            .spawn();
+                        ui.close_menu();
+                    }
                     if ui.button("Hotkeys & Shortcuts...").clicked() {
                         self.show_hotkey_dialog = true;
                         ui.close_menu();
@@ -317,6 +323,45 @@ impl eframe::App for App {
 
                 if ui.button("[*] Pindai games/").clicked() {
                     self.native_mgr.scan_games();
+                }
+
+                if ui.button("[^] Unduh Box Art").clicked() {
+                    let games_clone = self.native_mgr.games.clone();
+                    std::thread::spawn(move || {
+                        let _ = std::fs::create_dir_all("covers");
+                        for g in games_clone {
+                            let cover_path = format!("covers/{}.jpg", g.name);
+                            if !std::path::Path::new(&cover_path).exists() {
+                                // Extract serial
+                                let serial = if g.elf.contains("SLUS_209.64") || g.name.contains("devil-may-cry-3") {
+                                    "SLUS-20964".to_string()
+                                } else if g.elf.contains("SLES_544.90") || g.name.contains("god-hand") {
+                                    "SLES-54490".to_string()
+                                } else if g.elf.contains("SLUS_212.15") || g.name.contains("warriors") {
+                                    "SLUS-21215".to_string()
+                                } else {
+                                    // Try regex on elf or source
+                                    let elf_upper = g.elf.to_uppercase();
+                                    if let Some(pos) = elf_upper.find("SLUS_") {
+                                        let s = &elf_upper[pos..];
+                                        s.chars().take(11).collect::<String>().replace('_', "-").replace('.', "")
+                                    } else if let Some(pos) = elf_upper.find("SLES_") {
+                                        let s = &elf_upper[pos..];
+                                        s.chars().take(11).collect::<String>().replace('_', "-").replace('.', "")
+                                    } else {
+                                        String::new()
+                                    }
+                                };
+
+                                if !serial.is_empty() {
+                                    let url = format!("https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/{}.jpg", serial);
+                                    let _ = std::process::Command::new("powershell")
+                                        .args(["-NoProfile", "-Command", &format!("Invoke-WebRequest -Uri '{}' -OutFile '{}' -TimeoutSec 10", url, cover_path)])
+                                        .status();
+                                }
+                            }
+                        }
+                    });
                 }
 
                 // Search box
@@ -497,7 +542,7 @@ impl eframe::App for App {
                         ui.add_space(8.0);
                     }
                     ui.label(RichText::new("DivinePort - Native PS2 Static Recompiler Launcher").strong().size(15.0));
-                    ui.label(RichText::new("Versi 1.0.0 (Release)").color(Color32::from_rgb(56, 189, 248)));
+                    ui.label(RichText::new(format!("Versi {} (Release)", env!("CARGO_PKG_VERSION"))).color(Color32::from_rgb(56, 189, 248)));
                     ui.add_space(6.0);
                     ui.label("Kompilasi statis Ahead-Of-Time (AOT) dari instruksi biner PS2 MIPS R5900 langsung ke kode C++20 dan mesin x86_64 Windows.");
                     ui.label("Menggabungkan arsitektur grafis SpartanPort (AMD FSR 3.1 / 4.1, DLSS, TAA, Frame Generation) dengan sistem kontrol dan pustaka game terstruktur PCSX2.");
