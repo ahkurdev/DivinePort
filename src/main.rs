@@ -333,7 +333,7 @@ impl eframe::App for App {
                         .color(Color32::from_rgb(56, 189, 248)),
                 );
                 ui.label(
-                    RichText::new("| PS2 Static Recompiler (SpartanPort x PCSX2 Unified)")
+                    RichText::new("| DivinePort Native Engine (SpartanPort x PCSX2 Unified)")
                         .size(11.0)
                         .color(Color32::from_rgb(139, 148, 158)),
                 );
@@ -582,7 +582,7 @@ impl eframe::App for App {
                         });
                         ui.add_space(8.0);
                     }
-                    ui.label(RichText::new("DivinePort - Native PS2 Static Recompiler Launcher").strong().size(15.0));
+                    ui.label(RichText::new("DivinePort - Native Static Recompiler").strong().size(15.0));
                     ui.label(RichText::new(format!("Versi {} (Release)", env!("CARGO_PKG_VERSION"))).color(Color32::from_rgb(56, 189, 248)));
                     ui.add_space(6.0);
                     ui.label("Kompilasi statis Ahead-Of-Time (AOT) dari instruksi biner PS2 MIPS R5900 langsung ke kode C++20 dan mesin x86_64 Windows.");
@@ -685,7 +685,7 @@ fn main() -> eframe::Result<()> {
     let mut viewport = egui::ViewportBuilder::default()
         .with_inner_size(Vec2::new(1040.0, 720.0))
         .with_min_inner_size(Vec2::new(880.0, 580.0))
-        .with_title("DivinePort - Native PS2 Static Recompiler Launcher");
+        .with_title("DivinePort - Native Static Recompiler");
 
     if let Some(icon) = load_icon() {
         viewport = viewport.with_icon(icon);

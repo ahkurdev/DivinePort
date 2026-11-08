@@ -242,7 +242,7 @@ pub fn render_interactive_gamepad(
     painter.text(
         Pos2::new(pad_rect.center().x, pad_rect.center().y - 30.0),
         eframe::egui::Align2::CENTER_CENTER,
-        "PS2 RECOMP",
+        "DIVINEPORT",
         FontId::proportional(11.0),
         Color32::from_rgb(148, 163, 184),
     );

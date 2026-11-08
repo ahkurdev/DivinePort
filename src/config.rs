@@ -295,7 +295,7 @@ impl GameRuntimeConfig {
     pub fn save_to_ini(&self, path: &Path) -> Result<(), std::io::Error> {
         let (rw, rh, tw, th) = self.calculate_render_resolution();
         let content = format!(
-            r#"# SpartanPort / PS2 Recomp Runtime Configuration
+            r#"# SpartanPort / DivinePort Runtime Configuration
 [Graphics]
 render_scale = {}
 widescreen_16_9 = {}

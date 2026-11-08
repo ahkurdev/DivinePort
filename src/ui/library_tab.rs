@@ -196,7 +196,7 @@ pub fn render_library_tab(
                                                 settings.glyph_style.as_str().to_string(),
                                             ));
                                         }
-                                    } else if ui.button(RichText::new("RECOMPILE").strong().color(Color32::from_rgb(251, 191, 36))).clicked() {
+                                    } else if ui.button(RichText::new("KOMPILASI").strong().color(Color32::from_rgb(251, 191, 36))).clicked() {
                                         let iso_path = std::path::PathBuf::from(&game.source);
                                         action_build = Some((
                                             game.name.clone(),
@@ -292,7 +292,7 @@ pub fn render_library_tab(
                                             settings.glyph_style.as_str().to_string(),
                                         ));
                                     }
-                                } else if ui.button(RichText::new(" [ RECOMPILE ] ").strong().size(13.0)).clicked() {
+                                } else if ui.button(RichText::new(" [ KOMPILASI ] ").strong().size(13.0)).clicked() {
                                     let iso_path = std::path::PathBuf::from(&game.source);
                                     action_build = Some((
                                         game.name.clone(),

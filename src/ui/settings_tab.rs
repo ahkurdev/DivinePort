@@ -52,7 +52,7 @@ pub fn render_settings_tab(
         .inner_margin(12.0)
         .rounding(6.0)
         .show(ui, |ui| {
-            ui.heading(RichText::new("Direktori Source ps2-native-recomp").size(15.0));
+            ui.heading(RichText::new("Direktori Source DivinePort").size(15.0));
             ui.add_space(6.0);
 
             ui.horizontal(|ui| {
