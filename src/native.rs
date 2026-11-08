@@ -765,6 +765,10 @@ impl NativeManager {
             cmd.arg("--patches").arg(&patches_path);
         }
 
+        // Set explicit window title so game window is branded DivinePort
+        let display_title = game.name.replace('-', " ").to_uppercase();
+        cmd.env("PS2_WINDOW_TITLE", format!("DivinePort: {}", display_title));
+
         // SpartanPort fidelityfx environment variables
         cmd.env("SPARTAN_GLYPH_STYLE", glyph_style);
         cmd.env("PS2_SCALE", runtime_config.render_scale.to_string());

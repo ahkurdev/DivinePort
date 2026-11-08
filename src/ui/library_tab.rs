@@ -257,8 +257,8 @@ pub fn render_library_tab(
                                 ui.painter().text(
                                     badge_rect.center(),
                                     egui::Align2::CENTER_CENTER,
-                                    "PS2",
-                                    egui::FontId::monospace(14.0),
+                                    "DIVINE\nPORT",
+                                    egui::FontId::monospace(11.0),
                                     Color32::from_rgb(56, 189, 248),
                                 );
                             }
