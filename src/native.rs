@@ -811,13 +811,17 @@ impl NativeManager {
             cmd.env("SPARTAN_FRAME_GEN", runtime_config.frame_generation.as_str());
         }
 
-        // Windows Thread Director Optimization: Elevate to ABOVE_NORMAL_PRIORITY_CLASS (0x00008000)
-        // Forces Windows 11 to schedule Emulation & Vector threads onto Intel P-Cores (Performance cores)
-        // rather than being choked on slow 1.8 GHz E-cores (Efficiency small cores).
+        // Zero-Framedrop Presentation Pipeline:
+        // FIFO VSync with double buffering eliminates tearing and micro-stutters
+        cmd.env("PS2_PRESENT_MODE", "fifo");
+        cmd.env("PS2_FRAME_LATENCY", "2");
+
+        // Windows Thread Director Optimization: Elevate to HIGH_PRIORITY_CLASS (0x00000080)
+        // Forces Windows 11 to prioritize Emulation & Vector threads onto Intel P-Cores
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x00008000);
+            cmd.creation_flags(0x00000080);
         }
 
         cmd.spawn()
