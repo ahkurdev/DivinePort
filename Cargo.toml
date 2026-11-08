@@ -1,6 +1,6 @@
 [package]
 name = "DivinePort"
-version = "1.2.5"
+version = "1.2.6"
 edition = "2021"
 authors = ["ahkurdev"]
 description = "Native Ahead-Of-Time (AOT) PS2 Static Recompilation Launcher with FidelityFX FSR 3.1/4, DLSS, and PCSX2 x SpartanPort Unified Architecture"

@@ -783,18 +783,19 @@ impl NativeManager {
         // Graphics API selection (Vulkan core dramatically reduces presentation hitching on GeForce/Radeon)
         cmd.env("PS2_GPU_BACKEND", &runtime_config.graphics_backend);
 
-        // PCSX2 SPU2 Async Mix adaptation: Prevent virtual audio drivers from lagging game clock down to 14 FPS
+        // Audio Timing & Stretching Pipeline:
+        // When async_audio is disabled or default, enable audio stretching so the SoundPipe buffer
+        // stays smoothly buffered at 60-80ms without underruns (eliminates audio 0 ms and crackling sound).
         if runtime_config.async_audio {
-            cmd.env("PS2_AUDIO_STRETCH", "0");
-            cmd.env("PS2_ASYNC_AUDIO", "1");
+            cmd.env("PS2_AUDIO_STRETCH", "1");
+            cmd.env("PS2_AUDIO_STRETCH_MAX", "2.0");
         } else {
             cmd.env("PS2_AUDIO_STRETCH", "1");
-            cmd.env("PS2_ASYNC_AUDIO", "0");
         }
 
         // Live JIT Vector Unit (VU1) Background Compiler Optimization:
         // Set to low priority so background Clang JIT never steals CPU cycles from active 60 FPS gameplay,
-        // and cap compiler worker jobs to 2 threads to prevent 154% CPU load spikes.
+        // and cap compiler worker jobs to 2 threads to prevent CPU load spikes.
         cmd.env("PS2_VU_LIVE_PRIORITY", "low");
         cmd.env("PS2_VU_LIVE_JOBS", "2");
         cmd.env("PS2_VU_LIVE_OPT", "-O2");
@@ -811,17 +812,16 @@ impl NativeManager {
             cmd.env("SPARTAN_FRAME_GEN", runtime_config.frame_generation.as_str());
         }
 
-        // Zero-Framedrop Presentation Pipeline:
-        // FIFO VSync with double buffering eliminates tearing and micro-stutters
-        cmd.env("PS2_PRESENT_MODE", "fifo");
-        cmd.env("PS2_FRAME_LATENCY", "2");
+        // Presentation mode: Use mailbox or immediate so present() is non-blocking and
+        // pace() accurately controls the exact 60.0 FPS frame intervals without double VSync stalls.
+        cmd.env("PS2_PRESENT_MODE", "mailbox");
 
-        // Windows Thread Director Optimization: Elevate to HIGH_PRIORITY_CLASS (0x00000080)
-        // Forces Windows 11 to prioritize Emulation & Vector threads onto Intel P-Cores
+        // Windows Thread Director Optimization: Elevate to ABOVE_NORMAL_PRIORITY_CLASS (0x00008000)
+        // Ensures smooth scheduling onto Intel P-Cores without choking the system audio daemon
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x00000080);
+            cmd.creation_flags(0x00008000);
         }
 
         cmd.spawn()
