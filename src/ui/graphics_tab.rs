@@ -189,4 +189,47 @@ pub fn render_graphics_tab(ui: &mut egui::Ui, runtime_config: &mut GameRuntimeCo
             });
             ui.label(RichText::new("   Automatic mendeteksi driver kartu grafis untuk mencegah glitch garis hitam pada RX 6600 & Intel Arc.").small().color(Color32::from_rgb(139, 148, 158)));
         });
+
+    ui.add_space(10.0);
+
+    // -------------------------------------------------------------
+    // SECTION 4: FRAME PACING & SINKRONISASI (SPARTANPORT 120 FPS & PCSX2 ASYNC)
+    // -------------------------------------------------------------
+    egui::Frame::none()
+        .fill(Color32::from_rgb(18, 24, 38))
+        .stroke(Stroke::new(1.0_f32, Color32::from_rgb(52, 211, 153)))
+        .inner_margin(12.0)
+        .rounding(6.0)
+        .show(ui, |ui| {
+            ui.heading(RichText::new("Optimal Frame Pacing & Adaptasi PCSX2 / SpartanPort Engine").size(15.0).color(Color32::from_rgb(52, 211, 153)));
+            ui.add_space(6.0);
+
+            ui.checkbox(
+                &mut runtime_config.lock_game_60_display_120,
+                RichText::new("SpartanPort 120 FPS Mode: Tampilan 120 FPS dengan Game Logic Terkunci 60 FPS").strong(),
+            );
+            ui.label(RichText::new("   Mesin merender swapchain pada 120 FPS menggunakan AMD FSR 3.1 Frame Gen, sementara clock simulasi game PS2 tetap terkunci di 60.0 FPS murni (mencegah game bergerak terlalu cepat/liar).").small().color(Color32::from_rgb(139, 148, 158)));
+
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Graphics Backend API:").strong());
+                let backend_opts = [
+                    ("vulkan", "Vulkan Core (Rekomendasi Utama: Zero Hitching & Latensi Rendah)"),
+                    ("dx12", "Direct3D 12 (D3D12 Default)"),
+                ];
+                for (val, desc) in backend_opts {
+                    if ui.selectable_label(runtime_config.graphics_backend == val, desc).clicked() {
+                        runtime_config.graphics_backend = val.to_string();
+                    }
+                }
+            });
+            ui.label(RichText::new("   Vulkan memotong overhead driver grafis laptop NVIDIA RTX & AMD Radeon dan menghilangkan jeda presentasi D3D12.").small().color(Color32::from_rgb(139, 148, 158)));
+
+            ui.add_space(8.0);
+            ui.checkbox(
+                &mut runtime_config.async_audio,
+                RichText::new("Sinkronisasi Audio Asinkron (PCSX2 SPU2 Async Mix)").strong(),
+            );
+            ui.label(RichText::new("   Memisahkan clock audio dari loop emulasi video. Mencegah bug 'stretched audio' di mana device audio virtual (seperti SteelSeries Sonar) memperlambat game menjadi 14 FPS.").small().color(Color32::from_rgb(139, 148, 158)));
+        });
 }

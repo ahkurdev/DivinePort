@@ -1,0 +1,14 @@
+{
+  "glyph_style": "Auto",
+  "render_scale": 2,
+  "widescreen_16_9": true,
+  "fullscreen": false,
+  "upscaler": "Dlss",
+  "upscale_preset": "NativeAa",
+  "frame_generation": "Fsr2x",
+  "target_resolution": "4k",
+  "rcas_sharpening": 0.5,
+  "rumble_enabled": true,
+  "stream_memory": "cached",
+  "msaa_mode": "on"
+}

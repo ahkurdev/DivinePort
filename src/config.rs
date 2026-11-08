@@ -229,6 +229,9 @@ pub struct GameRuntimeConfig {
     pub rumble_enabled: bool,
     pub stream_memory: String,   // "cached", "host", "device"
     pub msaa_mode: String,       // "auto", "off", "on"
+    pub graphics_backend: String, // "vulkan" (default, lower latency), "dx12"
+    pub async_audio: bool,        // true = PCSX2 SPU2 Async Mix (prevents audio stretch lag)
+    pub lock_game_60_display_120: bool, // SpartanPort 120 FPS display with 60 FPS game lock
 }
 
 impl Default for GameRuntimeConfig {
@@ -246,6 +249,9 @@ impl Default for GameRuntimeConfig {
             rumble_enabled: true,
             stream_memory: "cached".to_string(),
             msaa_mode: "auto".to_string(),
+            graphics_backend: "vulkan".to_string(),
+            async_audio: true,
+            lock_game_60_display_120: true,
         }
     }
 }
@@ -305,6 +311,9 @@ output_height = {}
 rcas_sharpening = {:.2}
 stream_memory = {}
 msaa = {}
+graphics_backend = {}
+async_audio = {}
+lock_game_60_display_120 = {}
 
 [Controls]
 glyph_style = {}
@@ -324,6 +333,9 @@ rumble_enabled = {}
             self.rcas_sharpening,
             self.stream_memory,
             self.msaa_mode,
+            self.graphics_backend,
+            self.async_audio,
+            self.lock_game_60_display_120,
             self.glyph_style.as_str(),
             self.rumble_enabled
         );

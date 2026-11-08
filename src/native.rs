@@ -686,11 +686,31 @@ impl NativeManager {
         cmd.env("PS2_SCALE", runtime_config.render_scale.to_string());
         cmd.env("SPARTAN_UPSCALER", runtime_config.upscaler.as_str());
         cmd.env("SPARTAN_UPSCALE_PRESET", runtime_config.upscale_preset.as_code());
-        cmd.env("SPARTAN_FRAME_GEN", runtime_config.frame_generation.as_str());
         cmd.env("SPARTAN_STREAM_MEMORY", &runtime_config.stream_memory);
         cmd.env("SPARTAN_RCAS", format!("{:.2}", runtime_config.rcas_sharpening));
         if runtime_config.msaa_mode != "auto" {
             cmd.env("SPARTAN_NO_MSAA", if runtime_config.msaa_mode == "off" { "1" } else { "0" });
+        }
+
+        // Graphics API selection (Vulkan core dramatically reduces presentation hitching on GeForce/Radeon)
+        cmd.env("PS2_GPU_BACKEND", &runtime_config.graphics_backend);
+
+        // PCSX2 SPU2 Async Mix adaptation: Prevent virtual audio drivers from lagging game clock down to 14 FPS
+        if runtime_config.async_audio {
+            cmd.env("PS2_AUDIO_STRETCH", "0");
+        } else {
+            cmd.env("PS2_AUDIO_STRETCH", "1");
+        }
+
+        // SpartanPort 120 FPS display with locked 60 FPS PS2 game simulation
+        if runtime_config.lock_game_60_display_120 {
+            cmd.env("SPARTAN_FRAME_GEN", "fsr2x");
+            cmd.env("SPARTAN_DISPLAY_FPS", "120");
+            cmd.env("SPARTAN_SIMULATION_LOCK", "60");
+            cmd.env("PS2_TARGET_FPS", "120");
+            cmd.env("PS2_GAME_LOCK_FPS", "60");
+        } else {
+            cmd.env("SPARTAN_FRAME_GEN", runtime_config.frame_generation.as_str());
         }
 
         cmd.spawn()
