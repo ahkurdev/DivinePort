@@ -43,6 +43,7 @@ impl App {
         };
 
         let native_mgr = NativeManager::new(recomp_root);
+        fetch_missing_box_arts(&native_mgr.games);
 
         let logo_texture = if let Ok(img) = image::load_from_memory(include_bytes!("../assets/logo.jpg")) {
             let rgba = img.to_rgba8();
@@ -354,6 +355,7 @@ impl eframe::App for App {
 
                 if ui.button("[*] Pindai games/").clicked() {
                     self.native_mgr.scan_games();
+                    fetch_missing_box_arts(&self.native_mgr.games);
                 }
 
                 if ui.button("[+] Kompilasi Semua (Batch)").clicked() {
@@ -364,42 +366,7 @@ impl eframe::App for App {
                 }
 
                 if ui.button("[^] Unduh Box Art").clicked() {
-                    let games_clone = self.native_mgr.games.clone();
-                    std::thread::spawn(move || {
-                        let _ = std::fs::create_dir_all("covers");
-                        for g in games_clone {
-                            let cover_path = format!("covers/{}.jpg", g.name);
-                            if !std::path::Path::new(&cover_path).exists() {
-                                // Extract serial
-                                let serial = if g.elf.contains("SLUS_209.64") || g.name.contains("devil-may-cry-3") {
-                                    "SLUS-20964".to_string()
-                                } else if g.elf.contains("SLES_544.90") || g.name.contains("god-hand") {
-                                    "SLES-54490".to_string()
-                                } else if g.elf.contains("SLUS_212.15") || g.name.contains("warriors") {
-                                    "SLUS-21215".to_string()
-                                } else {
-                                    // Try regex on elf or source
-                                    let elf_upper = g.elf.to_uppercase();
-                                    if let Some(pos) = elf_upper.find("SLUS_") {
-                                        let s = &elf_upper[pos..];
-                                        s.chars().take(11).collect::<String>().replace('_', "-").replace('.', "")
-                                    } else if let Some(pos) = elf_upper.find("SLES_") {
-                                        let s = &elf_upper[pos..];
-                                        s.chars().take(11).collect::<String>().replace('_', "-").replace('.', "")
-                                    } else {
-                                        String::new()
-                                    }
-                                };
-
-                                if !serial.is_empty() {
-                                    let url = format!("https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/{}.jpg", serial);
-                                    let _ = std::process::Command::new("powershell")
-                                        .args(["-NoProfile", "-Command", &format!("Invoke-WebRequest -Uri '{}' -OutFile '{}' -TimeoutSec 10", url, cover_path)])
-                                        .status();
-                                }
-                            }
-                        }
-                    });
+                    fetch_missing_box_arts(&self.native_mgr.games);
                 }
 
                 // Search box
@@ -672,6 +639,57 @@ fn render_logs_tab(ui: &mut egui::Ui, native_mgr: &mut NativeManager) {
         });
 
         ui.add_space(16.0);
+    });
+}
+
+fn fetch_missing_box_arts(games: &[crate::native::NativeGameInfo]) {
+    let games_clone = games.to_vec();
+    std::thread::spawn(move || {
+        let _ = std::fs::create_dir_all("covers");
+        for g in games_clone {
+            let cover_path = format!("covers/{}.jpg", g.name);
+            if !std::path::Path::new(&cover_path).exists() {
+                let serial = if g.elf.contains("SLUS_209.64") || g.name.contains("devil-may-cry-3") {
+                    "SLUS-20964".to_string()
+                } else if g.elf.contains("SLES_544.90") || g.name.contains("god-hand") {
+                    "SLES-54490".to_string()
+                } else if g.elf.contains("SLUS_212.15") || g.name.contains("warriors") {
+                    "SLUS-21215".to_string()
+                } else {
+                    let mut found = String::new();
+                    let full_txt = format!("{} {}", g.elf, g.source).to_uppercase();
+                    let prefixes = ["SLUS_", "SLES_", "SCUS_", "SCES_", "SLPM_", "SLPS_", "SCPS_", "SLAJ_", "SCAJ_", "SLKA_"];
+                    for p in prefixes {
+                        if let Some(pos) = full_txt.find(p) {
+                            let s = &full_txt[pos..];
+                            let candidate = s.chars().take(11).collect::<String>().replace('_', "-").replace('.', "");
+                            if candidate.len() >= 9 {
+                                found = candidate;
+                                break;
+                            }
+                        }
+                    }
+                    found
+                };
+
+                if !serial.is_empty() {
+                    let url = format!(
+                        "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/{}.jpg",
+                        serial
+                    );
+                    let _ = std::process::Command::new("powershell")
+                        .args([
+                            "-NoProfile",
+                            "-Command",
+                            &format!(
+                                "Invoke-WebRequest -Uri '{}' -OutFile '{}' -TimeoutSec 10",
+                                url, cover_path
+                            ),
+                        ])
+                        .status();
+                }
+            }
+        }
     });
 }
 
