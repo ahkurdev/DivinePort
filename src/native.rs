@@ -713,6 +713,15 @@ impl NativeManager {
             cmd.env("SPARTAN_FRAME_GEN", runtime_config.frame_generation.as_str());
         }
 
+        // Windows Thread Director Optimization: Elevate to ABOVE_NORMAL_PRIORITY_CLASS (0x00008000)
+        // Forces Windows 11 to schedule Emulation & Vector threads onto Intel P-Cores (Performance cores)
+        // rather than being choked on slow 1.8 GHz E-cores (Efficiency small cores).
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x00008000);
+        }
+
         cmd.spawn()
     }
 }
