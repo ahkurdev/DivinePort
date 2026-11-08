@@ -786,9 +786,19 @@ impl NativeManager {
         // PCSX2 SPU2 Async Mix adaptation: Prevent virtual audio drivers from lagging game clock down to 14 FPS
         if runtime_config.async_audio {
             cmd.env("PS2_AUDIO_STRETCH", "0");
+            cmd.env("PS2_ASYNC_AUDIO", "1");
         } else {
             cmd.env("PS2_AUDIO_STRETCH", "1");
+            cmd.env("PS2_ASYNC_AUDIO", "0");
         }
+
+        // Live JIT Vector Unit (VU1) Background Compiler Optimization:
+        // Set to low priority so background Clang JIT never steals CPU cycles from active 60 FPS gameplay,
+        // and cap compiler worker jobs to 2 threads to prevent 154% CPU load spikes.
+        cmd.env("PS2_VU_LIVE_PRIORITY", "low");
+        cmd.env("PS2_VU_LIVE_JOBS", "2");
+        cmd.env("PS2_VU_LIVE_OPT", "-O2");
+        cmd.env("PS2_GPU_LOW_POWER", "0");
 
         // SpartanPort 120 FPS display with locked 60 FPS PS2 game simulation
         if runtime_config.lock_game_60_display_120 {
