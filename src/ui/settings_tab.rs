@@ -6,7 +6,10 @@ pub fn render_settings_tab(
     settings: &mut LauncherSettings,
     _runtime_config: &mut GameRuntimeConfig,
 ) {
-    ui.heading(RichText::new("PENGATURAN UMUM & KONFIGURASI SISTEM").strong().size(18.0));
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            ui.heading(RichText::new("PENGATURAN UMUM & KONFIGURASI SISTEM").strong().size(18.0));
     ui.label(RichText::new("Konfigurasi aplikasi peluncur, path folder kompiler, dan preferensi antarmuka.").color(Color32::from_rgb(139, 148, 158)));
     ui.add_space(8.0);
 
@@ -75,4 +78,7 @@ pub fn render_settings_tab(
         Color32::from_rgb(52, 211, 153),
         RichText::new("[ Auto-Save Aktif: Setiap perubahan opsi disimpan otomatis ke disk ]").strong(),
     );
+
+    ui.add_space(16.0);
+    });
 }

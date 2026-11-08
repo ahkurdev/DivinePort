@@ -3,12 +3,15 @@
   "render_scale": 2,
   "widescreen_16_9": true,
   "fullscreen": false,
-  "upscaler": "Dlss",
+  "upscaler": "Fsr3",
   "upscale_preset": "NativeAa",
   "frame_generation": "Fsr2x",
-  "target_resolution": "4k",
+  "target_resolution": "1080p",
   "rcas_sharpening": 0.5,
   "rumble_enabled": true,
   "stream_memory": "cached",
-  "msaa_mode": "on"
+  "msaa_mode": "on",
+  "graphics_backend": "vulkan",
+  "async_audio": true,
+  "lock_game_60_display_120": true
 }

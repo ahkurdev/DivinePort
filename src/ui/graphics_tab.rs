@@ -2,9 +2,12 @@ use crate::config::{FrameGenMode, GameRuntimeConfig, UpscalePreset, UpscalerType
 use eframe::egui::{self, Color32, RichText, Stroke};
 
 pub fn render_graphics_tab(ui: &mut egui::Ui, runtime_config: &mut GameRuntimeConfig) {
-    ui.heading(RichText::new("PENGATURAN GRAFIS & TEMPORAL UPSCALING (GS)").strong().size(18.0));
-    ui.label(RichText::new("Sistem Upscaler Temporal FidelityFX (FSR 3.1, FSR 4, FSR 4.1, DLSS, TAA) & Frame Generation arsitektur SpartanPort.").color(Color32::from_rgb(139, 148, 158)));
-    ui.add_space(8.0);
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            ui.heading(RichText::new("PENGATURAN GRAFIS & TEMPORAL UPSCALING (GS)").strong().size(18.0));
+            ui.label(RichText::new("Sistem Upscaler Temporal FidelityFX (FSR 3.1, FSR 4, FSR 4.1, DLSS, TAA) & Frame Generation arsitektur SpartanPort.").color(Color32::from_rgb(139, 148, 158)));
+            ui.add_space(8.0);
 
     // -------------------------------------------------------------
     // SECTION 1: RESOLUSI & DISPLAY MODE
@@ -232,4 +235,7 @@ pub fn render_graphics_tab(ui: &mut egui::Ui, runtime_config: &mut GameRuntimeCo
             );
             ui.label(RichText::new("   Memisahkan clock audio dari loop emulasi video. Mencegah bug 'stretched audio' di mana device audio virtual (seperti SteelSeries Sonar) memperlambat game menjadi 14 FPS.").small().color(Color32::from_rgb(139, 148, 158)));
         });
+
+        ui.add_space(16.0);
+    });
 }

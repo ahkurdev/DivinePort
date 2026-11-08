@@ -11,7 +11,10 @@ pub fn render_controls_tab(
     runtime_config: &mut GameRuntimeConfig,
     gamepad: &mut GamepadManager,
 ) {
-    ui.add_space(2.0);
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            ui.add_space(2.0);
     ui.horizontal(|ui| {
         ui.heading(RichText::new("KONTROL & GLYPH DUALSHOCK 2 (PAD)").strong().size(18.0).color(Color32::from_rgb(241, 245, 249)));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -139,4 +142,7 @@ pub fn render_controls_tab(
                     }
                 });
         });
+
+        ui.add_space(16.0);
+    });
 }

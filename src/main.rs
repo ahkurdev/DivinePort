@@ -621,9 +621,12 @@ impl eframe::App for App {
 }
 
 fn render_logs_tab(ui: &mut egui::Ui, native_mgr: &mut NativeManager) {
-    ui.heading(RichText::new("Terminal Log Kompilasi AOT (Clang & Ninja)").strong().size(18.0));
-    ui.label(RichText::new("Output log real-time proses translasi mesin dan kompilasi biner C++20.").color(Color32::from_rgb(139, 148, 158)));
-    ui.add_space(8.0);
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            ui.heading(RichText::new("Terminal Log Kompilasi AOT (Clang & Ninja)").strong().size(18.0));
+            ui.label(RichText::new("Output log real-time proses translasi mesin dan kompilasi biner C++20.").color(Color32::from_rgb(139, 148, 158)));
+            ui.add_space(8.0);
 
     ui.horizontal(|ui| {
         if native_mgr.is_building {
@@ -667,6 +670,9 @@ fn render_logs_tab(ui: &mut egui::Ui, native_mgr: &mut NativeManager) {
                     }
                 });
         });
+
+        ui.add_space(16.0);
+    });
 }
 
 fn load_icon() -> Option<egui::IconData> {
