@@ -24,6 +24,7 @@ struct App {
     show_hotkey_dialog: bool,
     logo_texture: Option<egui::TextureHandle>,
     selected_game_index: usize,
+    running_game: Option<(String, std::time::Instant, std::process::Child)>,
 }
 
 impl App {
@@ -65,6 +66,7 @@ impl App {
             show_hotkey_dialog: false,
             logo_texture,
             selected_game_index: 0,
+            running_game: None,
         }
     }
 }
@@ -76,6 +78,32 @@ impl eframe::App for App {
 
         self.gamepad.update();
         self.native_mgr.update_build_logs();
+
+        // -------------------------------------------------------------
+        // RUNNING GAME LIFECYCLE (PLAYTIME & AUTO RESTORE WINDOW)
+        // -------------------------------------------------------------
+        if let Some((ref game_name, start_time, ref mut child)) = self.running_game {
+            match child.try_wait() {
+                Ok(Some(_status)) => {
+                    let elapsed = start_time.elapsed().as_secs();
+                    let g_name = game_name.clone();
+                    self.native_mgr.update_playtime(&g_name, elapsed);
+                    self.running_game = None;
+                    // Restore and bring launcher window to front
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
+                Ok(None) => {
+                    // Still running, wake up every 500ms to poll
+                    ctx.request_repaint_after(std::time::Duration::from_millis(500));
+                }
+                Err(_) => {
+                    self.running_game = None;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
+            }
+        }
 
         // -------------------------------------------------------------
         // GAMEPAD MENU NAVIGATION (D-Pad, Stick, Face Buttons)
@@ -144,14 +172,17 @@ impl eframe::App for App {
 
         if let Some(game) = to_action {
             if game.is_ready {
-                let _ = self.native_mgr.launch_native_game(
+                if let Ok(child) = self.native_mgr.launch_native_game(
                     &game,
                     self.settings.glyph_style.as_str(),
                     &self.runtime_config,
-                );
+                ) {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                    self.running_game = Some((game.name.clone(), std::time::Instant::now(), child));
+                }
             } else {
                 let iso_path = PathBuf::from(&game.source);
-                self.native_mgr.start_native_build(
+                self.native_mgr.enqueue_build(
                     &game.name,
                     &iso_path,
                     self.runtime_config.widescreen_16_9,
@@ -325,6 +356,13 @@ impl eframe::App for App {
                     self.native_mgr.scan_games();
                 }
 
+                if ui.button("[+] Kompilasi Semua (Batch)").clicked() {
+                    let enqueued = self.native_mgr.enqueue_all_unbuilt(self.runtime_config.widescreen_16_9);
+                    if enqueued > 0 {
+                        self.active_tab = ActiveTab::Logs;
+                    }
+                }
+
                 if ui.button("[^] Unduh Box Art").clicked() {
                     let games_clone = self.native_mgr.games.clone();
                     std::thread::spawn(move || {
@@ -465,7 +503,7 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             match self.active_tab {
                 ActiveTab::Library => {
-                    ui::library_tab::render_library_tab(
+                    if let Some((g_name, child)) = ui::library_tab::render_library_tab(
                         ui,
                         &mut self.settings,
                         &mut self.runtime_config,
@@ -473,7 +511,10 @@ impl eframe::App for App {
                         &self.search_query,
                         self.table_view_mode,
                         &mut self.selected_game_index,
-                    );
+                    ) {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                        self.running_game = Some((g_name, std::time::Instant::now(), child));
+                    }
                 }
                 ActiveTab::Controls => {
                     ui::controls_tab::render_controls_tab(

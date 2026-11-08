@@ -10,7 +10,7 @@ pub fn render_library_tab(
     search_query: &str,
     table_view_mode: bool,
     selected_index: &mut usize,
-) {
+) -> Option<(String, std::process::Child)> {
     ui.add_space(2.0);
 
     // If currently building a game, show Live Terminal Console
@@ -103,6 +103,7 @@ pub fn render_library_tab(
                             ui.label(RichText::new("Region").strong().color(Color32::from_rgb(148, 163, 184)));
                             ui.label(RichText::new("Format").strong().color(Color32::from_rgb(148, 163, 184)));
                             ui.label(RichText::new("Status Biner Native").strong().color(Color32::from_rgb(148, 163, 184)));
+                            ui.label(RichText::new("Waktu Main").strong().color(Color32::from_rgb(148, 163, 184)));
                             ui.label(RichText::new("Widescreen 16:9").strong().color(Color32::from_rgb(148, 163, 184)));
                             ui.label(RichText::new("Aksi").strong().color(Color32::from_rgb(148, 163, 184)));
                             ui.end_row();
@@ -165,7 +166,18 @@ pub fn render_library_tab(
                                     );
                                 }
 
-                                // 6. Widescreen 16:9
+                                // 6. Waktu Main
+                                let hours = game.playtime_seconds as f64 / 3600.0;
+                                let playtime_str = if game.playtime_seconds == 0 {
+                                    "-".to_string()
+                                } else if hours < 0.1 {
+                                    format!("{} dtk", game.playtime_seconds)
+                                } else {
+                                    format!("{:.1} jam", hours)
+                                };
+                                ui.label(RichText::new(playtime_str).small().color(Color32::from_rgb(203, 213, 225)));
+
+                                // 7. Widescreen 16:9
                                 if !game.widescreen.is_empty() {
                                     ui.colored_label(
                                         Color32::from_rgb(56, 189, 248),
@@ -262,6 +274,14 @@ pub fn render_library_tab(
                                 } else {
                                     ui.colored_label(Color32::from_rgb(251, 191, 36), RichText::new("Status: Belum Dikompilasi").small());
                                 }
+
+                                let hours = game.playtime_seconds as f64 / 3600.0;
+                                let pt_str = if game.playtime_seconds == 0 {
+                                    "Belum pernah dimainkan".to_string()
+                                } else {
+                                    format!("Dimainkan: {:.1} Jam | Terakhir: {}", hours, if game.last_played.is_empty() { "-" } else { &game.last_played })
+                                };
+                                ui.label(RichText::new(pt_str).small().color(Color32::from_rgb(148, 163, 184)));
                             });
 
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -288,11 +308,16 @@ pub fn render_library_tab(
         });
     }
 
+    let mut launched = None;
     if let Some((game, glyph)) = action_launch {
-        let _ = native_mgr.launch_native_game(&game, &glyph, runtime_config);
+        if let Ok(child) = native_mgr.launch_native_game(&game, &glyph, runtime_config) {
+            launched = Some((game.name.clone(), child));
+        }
     }
 
     if let Some((name, iso, wide)) = action_build {
-        native_mgr.start_native_build(&name, &iso, wide);
+        native_mgr.enqueue_build(&name, &iso, wide);
     }
+
+    launched
 }

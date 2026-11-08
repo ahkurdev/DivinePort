@@ -6,6 +6,20 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
+use std::time::SystemTime;
+
+fn chrono_or_simple_timestamp() -> String {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    // Simple format YYYY-MM-DD or readable date
+    let days = now / 86400;
+    let rem_secs = now % 86400;
+    let hours = (rem_secs / 3600 + 7) % 24; // UTC+7 approximate
+    let minutes = (rem_secs % 3600) / 60;
+    format!("Hari ke-{}, {:02}:{:02} WIB", days, hours, minutes)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NativeGameInfo {
@@ -19,6 +33,10 @@ pub struct NativeGameInfo {
     pub sections: Vec<String>,
     pub patches: String,
     pub widescreen: String,
+    #[serde(default)]
+    pub playtime_seconds: u64,
+    #[serde(default)]
+    pub last_played: String,
     #[serde(skip)]
     pub is_ready: bool,
     #[serde(skip)]
@@ -33,6 +51,7 @@ pub struct NativeManager {
     pub is_building: bool,
     pub build_progress: f32, // 0.0 - 1.0
     pub current_stage: String,
+    pub batch_queue: VecDeque<(String, PathBuf, bool)>,
 }
 
 impl NativeManager {
@@ -45,6 +64,7 @@ impl NativeManager {
             is_building: false,
             build_progress: 0.0,
             current_stage: "Idle".to_string(),
+            batch_queue: VecDeque::new(),
         };
         mgr.scan_games();
         mgr
@@ -156,6 +176,8 @@ impl NativeManager {
                                         sections: vec![],
                                         patches: String::new(),
                                         widescreen: "1".to_string(),
+                                        playtime_seconds: 0,
+                                        last_played: String::new(),
                                         is_ready,
                                         exe_path,
                                     });
@@ -184,11 +206,23 @@ impl NativeManager {
                     self.current_stage = "Kompilasi Selesai (Siap Dimainkan!)".to_string();
                     self.log_lines.push_back("===> Build Finished Successfully!".to_string());
                     self.scan_games();
+
+                    // Check if there are more games in the batch queue
+                    if let Some((next_name, next_iso, next_ws)) = self.batch_queue.pop_front() {
+                        self.log_lines.push_back(format!(">>> Memulai batch berikutnya (Sisa di antrean: {}): {}", self.batch_queue.len(), next_name));
+                        self.start_native_build(&next_name, &next_iso, next_ws);
+                    }
                     break;
                 } else if line == "__BUILD_FAILED__" {
                     self.is_building = false;
                     self.current_stage = "Gagal (Lihat log di atas)".to_string();
                     self.log_lines.push_back("===> Build Failed! Check logs above.".to_string());
+
+                    // Check if there are more games in the batch queue even if one fails
+                    if let Some((next_name, next_iso, next_ws)) = self.batch_queue.pop_front() {
+                        self.log_lines.push_back(format!(">>> Melanjutkan antrean setelah kegagalan (Sisa di antrean: {}): {}", self.batch_queue.len(), next_name));
+                        self.start_native_build(&next_name, &next_iso, next_ws);
+                    }
                     break;
                 } else {
                     if self.log_lines.len() >= 1000 {
@@ -196,6 +230,54 @@ impl NativeManager {
                     }
                     self.log_lines.push_back(line);
                 }
+            }
+        }
+    }
+
+    pub fn enqueue_build(&mut self, raw_name: &str, iso_path: &Path, widescreen: bool) {
+        if !self.is_building {
+            self.start_native_build(raw_name, iso_path, widescreen);
+        } else {
+            self.batch_queue.push_back((raw_name.to_string(), iso_path.to_path_buf(), widescreen));
+            self.log_lines.push_back(format!(
+                "[+] Ditambahkan ke Antrean Batch: '{}' (Posisi Antrean: {})",
+                raw_name,
+                self.batch_queue.len()
+            ));
+        }
+    }
+
+    pub fn enqueue_all_unbuilt(&mut self, widescreen: bool) -> usize {
+        let mut count = 0;
+        let unbuilt: Vec<(String, PathBuf)> = self
+            .games
+            .iter()
+            .filter(|g| !g.is_ready)
+            .map(|g| (g.name.clone(), PathBuf::from(&g.source)))
+            .collect();
+
+        for (name, path) in unbuilt {
+            self.enqueue_build(&name, &path, widescreen);
+            count += 1;
+        }
+        count
+    }
+
+    pub fn update_playtime(&mut self, game_name: &str, elapsed_seconds: u64) {
+        let now_str = chrono_or_simple_timestamp();
+        for game in &mut self.games {
+            if game.name == game_name {
+                game.playtime_seconds = game.playtime_seconds.saturating_add(elapsed_seconds);
+                game.last_played = now_str.clone();
+
+                // Persist to app.json if it exists
+                let app_file = self.recomp_root.join("games").join(game_name).join("app.json");
+                if app_file.exists() {
+                    if let Ok(json) = serde_json::to_string_pretty(&game) {
+                        let _ = fs::write(&app_file, json);
+                    }
+                }
+                break;
             }
         }
     }
@@ -517,6 +599,8 @@ impl NativeManager {
                                     sections: vec![],
                                     patches: "".to_string(),
                                     widescreen: wide_str.to_string(),
+                                    playtime_seconds: 0,
+                                    last_played: String::new(),
                                     is_ready: true,
                                     exe_path: None,
                                 };
